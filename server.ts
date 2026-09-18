@@ -1,13 +1,9 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
@@ -283,7 +279,10 @@ app.post('/api/documents/brief', async (req: Request, res: Response) => {
 
 // Setup Vite middleware or static serving
 async function setupServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  const isCjsBundle = typeof __filename !== 'undefined' && __filename.endsWith('.cjs');
+  const isProduction = process.env.NODE_ENV === 'production' || isCjsBundle;
+
+  if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
