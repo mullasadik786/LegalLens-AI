@@ -1,0 +1,6 @@
+{
+  "name": "LegalLens AI",
+  "description": "World-Class GenAI Legal Document Intelligence Platform. Understand, compare, prepare, and act on legal documents with source-grounded evidence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
