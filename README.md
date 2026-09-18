@@ -144,14 +144,37 @@ CMD ["npm", "start"]
 
 ---
 
-## 🛡️ Security & Privacy Architecture
+## 🧪 Automated Testing Suite
 
-- **Zero Unsolicited Data Retention**: Documents are analyzed in-memory or transient sessions; no customer contract text is permanently recorded without permission.
-- **Isolated Prompt Sandboxing**: User-provided contract text is treated as untrusted data and strictly fenced within boundary tokens.
-- **No Substitute for Legal Counsel**: LegalLens AI provides analytical intelligence and consultation preparation, accompanied by prominent statutory disclaimers.
+LegalLens AI includes a comprehensive test suite using Vitest (covering security, RAG retrieval, PII sanitization, IDOR protection, diff comparison, and accessibility):
+
+```bash
+# Run the automated test suite
+npm test
+```
+
+### Test Coverage Highlights
+- **`tests/security.test.ts`**: Prompt injection detection, boundary delimiter escaping, PII redaction (SSN, emails, phones, credit cards), file size/MIME validation, and sliding-window rate limiting.
+- **`tests/ragEngine.test.ts`**: Section-aware chunking, query relevance scoring, and citation verification against document text.
+- **`tests/documentStore.test.ts`**: Session-scoped document isolation and IDOR defense.
+- **`tests/accessibility.test.ts`**: WCAG 2.2 AA contrast ratios (> 4.5:1), ARIA live regions, and 44px minimum touch targets.
+- **`tests/diffEngine.test.ts`**: Clause comparison and risk shift detection.
+
+---
+
+## 🛡️ Security, Privacy & Safety Architecture
+
+- **Strict IDOR Defense**: Documents are isolated per session/user ID in memory; cross-tenant document queries are strictly rejected with 403 Forbidden.
+- **Prompt Injection Sandboxing**: Untrusted document text is fenced in `<UNTRUSTED_DOCUMENT_CONTENT>` tags with boundary tag escaping and adversarial phrase detection.
+- **PII Redaction Engine**: Built-in redaction masks SSNs, phone numbers, email addresses, and credit card numbers before processing.
+- **Sliding-Window Rate Limiting**: In-memory rate limiting prevents API abuse and denial-of-service attempts.
+- **HTTP Security Headers**: Strict CSP, X-Content-Type-Options: nosniff, X-Frame-Options: SAMEORIGIN, and Referrer-Policy.
+- **Evidence Verification**: AI responses are verified against exact source document page numbers and quotation snippets.
+- **Human-in-the-Loop Safeguards**: Persistent disclaimers and explicit reminders that LegalLens AI provides educational document intelligence, not legal advice or attorney representation.
 
 ---
 
 ## 📄 License
 
 This project is licensed under the MIT License.
+

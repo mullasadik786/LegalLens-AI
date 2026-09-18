@@ -73,10 +73,11 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
               <button
                 id="hero-interactive-demo-btn"
                 onClick={onStartDemo}
-                className="px-6 py-3.5 rounded-xl font-semibold text-slate-200 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 hover:border-indigo-500/40 transition-all flex items-center gap-2.5 cursor-pointer text-sm sm:text-base"
+                className="px-6 py-3.5 rounded-xl font-semibold text-slate-200 bg-slate-900/90 hover:bg-slate-800/90 border border-indigo-500/50 hover:border-indigo-400 transition-all flex items-center gap-2.5 cursor-pointer text-sm sm:text-base shadow-lg shadow-indigo-950/50"
               >
                 <Scale className="w-4 h-4 text-indigo-400" />
-                <span>⚖️ Try Interactive Demo</span>
+                <span>⚖️ Try LegalLens Demo</span>
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">Fictional Demo</span>
               </button>
             </div>
 
@@ -116,6 +117,192 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* 2. THE PROBLEM → THE SOLUTION (PROBLEM STATEMENT ALIGNMENT) */}
+      <section className="max-w-7xl mx-auto px-4 text-left">
+        <div className="bg-slate-950 border border-indigo-500/30 rounded-3xl p-8 lg:p-10 relative overflow-hidden shadow-2xl">
+          <div className="text-center max-w-3xl mx-auto mb-10 space-y-3">
+            <span className="text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+              The Legal Document Challenge
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+              Why LegalLens AI?
+            </h2>
+            <p className="text-sm sm:text-base text-slate-300">
+              Empowering citizens, workers, and businesses to understand, compare, and navigate complex legal information with uncompromised source evidence.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+            {/* The Problem Column */}
+            <div className="bg-rose-950/20 border border-rose-900/40 rounded-2xl p-6 sm:p-7 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2.5 mb-4 text-rose-400">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/15 flex items-center justify-center font-bold text-base">⚠️</div>
+                  <h3 className="text-xl font-bold text-rose-300">The Problem</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-300 mb-5 leading-relaxed">
+                  Everyday legal documents are systematically inaccessible to regular people:
+                </p>
+                <ul className="space-y-3 text-xs sm:text-sm text-slate-300">
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-rose-400 font-bold">•</span>
+                    <span><strong className="text-rose-200">Complex:</strong> Wrapped in dense legal jargon, archaic phrasing, and convoluted clauses.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-rose-400 font-bold">•</span>
+                    <span><strong className="text-rose-200">Long:</strong> Spanning dozens of dense pages that overwhelm readers and obscure critical details.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-rose-400 font-bold">•</span>
+                    <span><strong className="text-rose-200">Difficult to Navigate:</strong> Fragmented schedules, hidden cross-references, and buried exceptions.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-rose-400 font-bold">•</span>
+                    <span><strong className="text-rose-200">Unfamiliar Terminology:</strong> Unclear phrases like indemnification, severability, and clawbacks.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-rose-400 font-bold">•</span>
+                    <span><strong className="text-rose-200">Difficult to Compare:</strong> Subtle wording differences between revisions can alter financial liability without notice.</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="mt-6 pt-4 border-t border-rose-900/30 text-xs text-rose-300/80">
+                Result: Unequal bargaining power and unintended legal exposure.
+              </div>
+            </div>
+
+            {/* The Solution Column */}
+            <div className="bg-emerald-950/20 border border-emerald-900/40 rounded-2xl p-6 sm:p-7 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2.5 mb-4 text-emerald-400">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center font-bold text-base">✨</div>
+                  <h3 className="text-xl font-bold text-emerald-300">The LegalLens Solution</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-300 mb-5 leading-relaxed">
+                  LegalLens AI converts intimidating legal documents into actionable clarity:
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="font-bold text-cyan-400 block mb-1">📖 Understand</span>
+                    <span className="text-slate-300 text-xs">Plain-language summaries, key terms, and clause breakdowns.</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="font-bold text-purple-400 block mb-1">⚖️ Compare</span>
+                    <span className="text-slate-300 text-xs">Side-by-side diff tracking added, removed, and modified clauses.</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="font-bold text-blue-400 block mb-1">🗺️ Explore</span>
+                    <span className="text-slate-300 text-xs">Interactive Decision Map linking parties, duties, and provisions.</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="font-bold text-emerald-400 block mb-1">💬 Ask</span>
+                    <span className="text-slate-300 text-xs">Grounded Q&A engine with verifiable page/section evidence citations.</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="font-bold text-amber-400 block mb-1">⏰ Track</span>
+                    <span className="text-slate-300 text-xs">Timeline of deadlines, notice windows, and responsible parties.</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <span className="font-bold text-indigo-400 block mb-1">👨‍⚖️ Prepare</span>
+                    <span className="text-slate-300 text-xs">Lawyer Brief and Next-Step Action Plan for professional consultation.</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 pt-4 border-t border-emerald-900/30 text-xs text-emerald-300/80">
+                Outcome: Clear legal comprehension with zero hallucination.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. VISUAL PIPELINE: FROM LEGAL DOCUMENT → LEGAL UNDERSTANDING */}
+      <section className="max-w-7xl mx-auto px-4 text-left">
+        <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 sm:p-8">
+          <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">Verifiable Workflow</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">From Legal Document → Legal Understanding</h2>
+            <p className="text-xs sm:text-sm text-slate-400">Every step transforms dense contracts into structured comprehension.</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-center text-xs">
+            {[
+              { label: 'Complex Contract', sub: 'Raw Input', color: 'from-slate-800 to-slate-900', border: 'border-slate-700' },
+              { label: 'AI Document X-Ray', sub: 'Structural Scan', color: 'from-indigo-950 to-slate-900', border: 'border-indigo-800/60' },
+              { label: 'Important Clauses', sub: 'Categorized', color: 'from-purple-950 to-slate-900', border: 'border-purple-800/60' },
+              { label: 'Evidence', sub: 'Page & Section', color: 'from-cyan-950 to-slate-900', border: 'border-cyan-800/60' },
+              { label: 'Plain Explanation', sub: 'Simple Terms', color: 'from-emerald-950 to-slate-900', border: 'border-emerald-800/60' },
+              { label: 'Questions', sub: 'Neutral Inquiries', color: 'from-amber-950 to-slate-900', border: 'border-amber-800/60' },
+              { label: 'Action Checklist', sub: 'Next Steps', color: 'from-blue-950 to-slate-900', border: 'border-blue-800/60' },
+              { label: 'Professional Consult', sub: 'Lawyer Ready', color: 'from-teal-950 to-slate-900', border: 'border-teal-800/60' }
+            ].map((node, i) => (
+              <div key={i} className={`p-3 rounded-xl bg-gradient-to-b ${node.color} border ${node.border} flex flex-col justify-center items-center`}>
+                <span className="text-[10px] font-bold text-slate-400 block mb-1">0{i + 1}</span>
+                <span className="font-bold text-slate-100 block text-xs leading-tight mb-0.5">{node.label}</span>
+                <span className="text-[10px] text-slate-400">{node.sub}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 4. REAL EDUCATIONAL USE-CASE CARDS */}
+      <section className="max-w-7xl mx-auto px-4 text-left">
+        <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
+          <span className="text-xs font-bold uppercase tracking-widest text-indigo-400">Practical Applications</span>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white">Everyday Contract Scenarios</h2>
+          <p className="text-xs sm:text-sm text-slate-400">Discover how LegalLens AI unpacks key obligations across common agreement types.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-2">
+            <span className="text-2xl block mb-1">🏠</span>
+            <h3 className="font-bold text-white text-sm">Rental Agreement</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Understand monthly rent, renewal grace periods, security deposit refund terms, and landlord entry notices.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-2">
+            <span className="text-2xl block mb-1">💼</span>
+            <h3 className="font-bold text-white text-sm">Employment Contract</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Explore base salary, bonus criteria, non-solicitation periods, early-termination clauses, and IP ownership.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-2">
+            <span className="text-2xl block mb-1">🤝</span>
+            <h3 className="font-bold text-white text-sm">Business Agreement</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Compare mutual deliverables, payment milestones, liability limits, and dispute arbitration rules.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-2">
+            <span className="text-2xl block mb-1">🔐</span>
+            <h3 className="font-bold text-white text-sm">Non-Disclosure (NDA)</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Analyze definitions of confidential information, carve-outs, non-disclosure duration, and return protocol.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl space-y-2">
+            <span className="text-2xl block mb-1">📑</span>
+            <h3 className="font-bold text-white text-sm">Insurance Policy</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Navigate coverage limits, explicit exclusions, claim filing deadlines, and deductible obligations.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 text-center">
+          <span className="text-[11px] text-slate-400 italic">
+            * These are educational examples for contract comprehension and navigation, not formal legal advice.
+          </span>
         </div>
       </section>
 

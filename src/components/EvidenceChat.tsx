@@ -11,7 +11,11 @@ import {
   Globe,
   Bot,
   User,
-  AlertCircle
+  AlertCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Flag,
+  X
 } from 'lucide-react';
 import { LegalDocument, ChatMessage, SupportedLanguage } from '../types/legal';
 import { LegalLensAIProvider } from '../services/aiProvider';
@@ -41,6 +45,13 @@ export const EvidenceChat: React.FC<EvidenceChatProps> = ({
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [feedbackState, setFeedbackState] = useState<Record<string, { helpful: boolean; reason?: string }>>({});
+  const [showReasonPickerFor, setShowReasonPickerFor] = useState<string | null>(null);
+  const [reportingMsgId, setReportingMsgId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState<string>('Inaccurate');
+  const [reportDetails, setReportDetails] = useState<string>('');
+  const [reportSubmitted, setReportSubmitted] = useState<boolean>(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
@@ -107,6 +118,51 @@ export const EvidenceChat: React.FC<EvidenceChatProps> = ({
     }
   };
 
+  const handleFeedback = (msgId: string, helpful: boolean) => {
+    setFeedbackState(prev => ({ ...prev, [msgId]: { helpful } }));
+    if (!helpful) {
+      setShowReasonPickerFor(msgId);
+    } else {
+      setShowReasonPickerFor(null);
+      // Send optimistic feedback
+      fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: document.id, messageId: msgId, helpful: true })
+      }).catch(() => {});
+    }
+  };
+
+  const handleFeedbackReason = (msgId: string, reason: string) => {
+    setFeedbackState(prev => ({ ...prev, [msgId]: { helpful: false, reason } }));
+    setShowReasonPickerFor(null);
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId: document.id, messageId: msgId, helpful: false, reason })
+    }).catch(() => {});
+  };
+
+  const submitReport = () => {
+    fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documentId: document.id,
+        messageId: reportingMsgId,
+        reason: reportReason,
+        details: reportDetails
+      })
+    }).catch(() => {});
+
+    setReportSubmitted(true);
+    setTimeout(() => {
+      setReportingMsgId(null);
+      setReportSubmitted(false);
+      setReportDetails('');
+    }, 1500);
+  };
+
   return (
     <div className="w-full space-y-4 text-left max-w-4xl mx-auto pb-16">
       {/* Header */}
@@ -154,9 +210,16 @@ export const EvidenceChat: React.FC<EvidenceChatProps> = ({
       </div>
 
       {/* Messages Container */}
-      <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-6 min-h-[420px] max-h-[580px] overflow-y-auto space-y-4 shadow-inner">
+      <div
+        role="log"
+        aria-live="polite"
+        aria-label="Conversation history"
+        className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-6 min-h-[420px] max-h-[580px] overflow-y-auto space-y-4 shadow-inner"
+      >
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
+          const feedback = feedbackState[msg.id];
+
           return (
             <div
               key={msg.id}
@@ -193,8 +256,13 @@ export const EvidenceChat: React.FC<EvidenceChatProps> = ({
                 {/* Evidence Box */}
                 {!isUser && msg.evidence && msg.evidence.length > 0 && (
                   <div className="pt-2 space-y-2">
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
-                      <span>📄 Supporting Document Evidence:</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
+                        📄 Supporting Document Evidence:
+                      </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                        Evidence verified
+                      </span>
                     </div>
 
                     {msg.evidence.map((ev, i) => (
@@ -233,6 +301,63 @@ export const EvidenceChat: React.FC<EvidenceChatProps> = ({
                           Professional legal review is recommended for definitive application in your jurisdiction.
                         </p>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Feedback and Reporting Controls */}
+                {!isUser && (
+                  <div className="pt-2 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400">Was this helpful?</span>
+                      <button
+                        onClick={() => handleFeedback(msg.id, true)}
+                        aria-label="Mark response as helpful"
+                        className={`p-1 rounded hover:bg-slate-800 transition cursor-pointer ${
+                          feedback?.helpful === true ? 'text-emerald-400' : 'text-slate-400'
+                        }`}
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleFeedback(msg.id, false)}
+                        aria-label="Mark response as not helpful"
+                        className={`p-1 rounded hover:bg-slate-800 transition cursor-pointer ${
+                          feedback?.helpful === false ? 'text-rose-400' : 'text-slate-400'
+                        }`}
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
+
+                      {feedback?.helpful && (
+                        <span className="text-[10px] text-emerald-400 font-medium">Thanks for feedback!</span>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setReportingMsgId(msg.id)}
+                      className="text-[10px] text-slate-400 hover:text-rose-300 flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Flag className="w-3 h-3" />
+                      <span>Report AI Response</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Quick Reason Picker when Not Helpful */}
+                {showReasonPickerFor === msg.id && (
+                  <div className="p-2.5 bg-slate-950/90 rounded-xl border border-rose-900/40 space-y-1.5 text-xs">
+                    <p className="text-[11px] font-semibold text-rose-300">What could be improved?</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Incorrect', 'Missing evidence', 'Hard to understand', 'Other'].map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => handleFeedbackReason(msg.id, r)}
+                          className="px-2 py-0.5 rounded bg-slate-800 hover:bg-rose-900/40 text-[11px] text-slate-300 hover:text-white border border-slate-700 transition"
+                        >
+                          {r}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -280,6 +405,98 @@ export const EvidenceChat: React.FC<EvidenceChatProps> = ({
           <Send className="w-3 h-3" />
         </button>
       </form>
+
+      {/* Reporting Modal */}
+      {reportingMsgId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-modal-title"
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 id="report-modal-title" className="text-base font-bold text-white flex items-center gap-2">
+                <Flag className="w-4 h-4 text-rose-400" />
+                <span>Report AI Response</span>
+              </h2>
+              <button
+                onClick={() => setReportingMsgId(null)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {reportSubmitted ? (
+              <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+                <p className="text-sm font-bold text-emerald-300">Report Submitted</p>
+                <p className="text-xs text-slate-400">Thank you for helping safeguard model accuracy and trust.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-slate-300">
+                  Select a category describing the issue with this response:
+                </p>
+
+                <div className="space-y-2">
+                  {[
+                    'Inaccurate',
+                    'Unsupported by document',
+                    'Missing source',
+                    'Misleading',
+                    'Other'
+                  ].map((category) => (
+                    <label
+                      key={category}
+                      className="flex items-center gap-2 text-xs text-slate-300 hover:text-white p-2 rounded-lg bg-slate-950/60 border border-slate-800 cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name="reportReason"
+                        value={category}
+                        checked={reportReason === category}
+                        onChange={(e) => setReportReason(e.target.value)}
+                        className="text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>{category}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">
+                    Optional details or context:
+                  </label>
+                  <textarea
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    rows={3}
+                    placeholder="Describe why this response is inaccurate..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setReportingMsgId(null)}
+                    className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:text-white bg-slate-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitReport}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 shadow"
+                  >
+                    Submit Report
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

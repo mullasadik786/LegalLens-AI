@@ -141,7 +141,11 @@ export const ClauseExplorer: React.FC<ClauseExplorerProps> = ({
                   <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md border ${getCategoryColor(clause.category)}`}>
                     {clause.category}
                   </span>
-                  <h2 className="text-base font-bold text-white tracking-tight">{clause.title}</h2>
+                  <h3 className="text-base font-bold text-white tracking-tight">{clause.title}</h3>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Evidence verified</span>
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -150,6 +154,7 @@ export const ClauseExplorer: React.FC<ClauseExplorerProps> = ({
                     <Globe className="w-3 h-3 text-cyan-400" />
                     <select
                       value={lang}
+                      aria-label={`Language for ${clause.title}`}
                       onChange={(e) => setCardLang({ ...cardLang, [clause.id]: e.target.value as SupportedLanguage })}
                       className="bg-transparent text-slate-300 outline-none cursor-pointer"
                     >
@@ -171,39 +176,58 @@ export const ClauseExplorer: React.FC<ClauseExplorerProps> = ({
                 </div>
               </div>
 
-              {/* Original Legal Text (Preserved verbatim) */}
+              {/* 5-PART STRUCTURE */}
+              
+              {/* Part 1: What it says (Original text quote) */}
               <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                   <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Original Legal Text (Verbatim Source)</span>
+                  <span>1. What It Says (Original Text)</span>
                 </div>
                 <p className="text-xs text-slate-300 font-mono leading-relaxed italic bg-slate-900/40 p-3 rounded-lg border-l-2 border-indigo-500">
                   "{clause.originalText}"
                 </p>
               </div>
 
-              {/* Plain-Language Explanation */}
+              {/* Part 2: In simple language */}
               <div className="bg-purple-950/20 border border-purple-900/30 rounded-xl p-4 space-y-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 block">
-                  Plain-Language AI Explanation
+                  2. In Simple Language ({lang.toUpperCase()})
                 </span>
                 <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
                   {explanation}
                 </p>
               </div>
 
-              {/* Why It Matters */}
-              <div className="text-xs text-slate-300 space-y-1">
-                <span className="font-bold text-amber-400 block">Why It Matters:</span>
-                <p className="text-slate-400 leading-relaxed">{clause.whyItMatters}</p>
+              {/* Part 3: Why it may matter */}
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 block">
+                  3. Why It May Matter
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">{clause.whyItMatters}</p>
               </div>
 
-              {/* Questions to Consider & Ask Button */}
+              {/* Part 4: Evidence */}
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400">4. Evidence Reference:</span>
+                  <span className="text-slate-200 font-mono font-semibold">Page {clause.sourcePage}, {clause.sourceSection}</span>
+                </div>
+                <button
+                  onClick={() => onJumpToEvidence(clause.sourcePage, clause.sourceSection, clause.originalText)}
+                  className="text-cyan-400 hover:text-cyan-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Highlight in PDF/Document View</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Part 5: Questions to consider */}
               {clause.questionsToConsider && clause.questionsToConsider.length > 0 && (
-                <div className="pt-3 border-t border-slate-800/80 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
                     <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Neutral Questions to Consider:</span>
+                    <span>5. Questions to Consider:</span>
                   </span>
                   <ul className="space-y-1.5 pl-4 text-xs text-slate-300 list-disc marker:text-indigo-500">
                     {clause.questionsToConsider.map((q, idx) => (

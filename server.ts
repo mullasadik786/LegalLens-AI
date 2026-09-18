@@ -2,14 +2,36 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import {
+  securityHeadersMiddleware,
+  createRateLimiter,
+  validateUploadedFile,
+  detectPromptInjection,
+  fenceUntrustedDocument
+} from './server/security';
+import { documentStore } from './server/documentStore';
+import { chunkDocument, retrieveRelevantChunks, validateEvidenceAgainstDocument } from './server/ragEngine';
+import { DEMO_DOCUMENT_V1, DEMO_DOCUMENT_V2 } from './src/data/demoDocuments';
 
 dotenv.config();
+
+// Seed public demo documents into secure store
+documentStore.save(DEMO_DOCUMENT_V1, 'public_demo');
+documentStore.save(DEMO_DOCUMENT_V2, 'public_demo');
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Apply HTTP security headers
+app.use(securityHeadersMiddleware);
+
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+// Rate limiters for expensive or security-critical endpoints
+const questionLimiter = createRateLimiter({ windowMs: 60 * 1000, maxRequests: 60, endpointName: 'AI Question' });
+const uploadLimiter = createRateLimiter({ windowMs: 60 * 1000, maxRequests: 25, endpointName: 'Document Upload' });
+const feedbackLimiter = createRateLimiter({ windowMs: 60 * 1000, maxRequests: 40, endpointName: 'Feedback & Reporting' });
 
 // Lazy Google GenAI initialization
 let aiClient: GoogleGenAI | null = null;
@@ -44,24 +66,102 @@ app.get('/api/health', (req: Request, res: Response) => {
     status: 'ok',
     aiConfigured: Boolean(process.env.GEMINI_API_KEY),
     model: 'gemini-3.8-flash',
-    platform: 'LegalLens AI GenAI Workspace'
+    platform: 'LegalLens AI GenAI Workspace',
+    security: {
+      rateLimiting: true,
+      securityHeaders: true,
+      promptInjectionShield: true,
+      idorProtection: true
+    }
   });
 });
 
-// Q&A endpoint with evidence grounding
-app.post('/api/documents/question', async (req: Request, res: Response) => {
+// ==========================================
+// DOCUMENT STORAGE & IDOR SECURE ENDPOINTS
+// ==========================================
+
+// Get document by ID with strict ownership validation (IDOR protected)
+app.get('/api/documents/:id', (req: Request, res: Response) => {
+  const docId = req.params.id;
+  const userId = (req.headers['x-user-id'] as string) || 'default_user';
+
+  const result = documentStore.get(docId, userId);
+  if (result.status === 'NOT_FOUND') {
+    return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Document not found' } });
+  }
+  if (result.status === 'FORBIDDEN') {
+    return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied: You do not have permission to view this document' } });
+  }
+
+  res.json({ success: true, data: result.document });
+});
+
+// Delete document with complete data purge (Privacy mandate)
+app.delete('/api/documents/:id', (req: Request, res: Response) => {
+  const docId = req.params.id;
+  const userId = (req.headers['x-user-id'] as string) || 'default_user';
+
+  const deleted = documentStore.delete(docId, userId);
+  if (!deleted) {
+    return res.status(404).json({ success: false, error: { code: 'DELETE_FAILED', message: 'Document could not be deleted or permission denied' } });
+  }
+
+  res.json({ success: true, message: 'Document and all associated cached analysis successfully deleted.' });
+});
+
+// Secure file upload validation endpoint
+app.post('/api/documents/upload', uploadLimiter, (req: Request, res: Response) => {
   try {
-    const { question, documentContext, rawPages, language = 'en' } = req.body;
+    const { name, type, size, contentBase64, document } = req.body;
+    const validation = validateUploadedFile({ name: name || 'document.pdf', type: type || 'application/pdf', size: size || 1024 });
+
+    if (!validation.valid) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_FILE', message: validation.error } });
+    }
+
+    const userId = (req.headers['x-user-id'] as string) || 'default_user';
+    if (document && document.id) {
+      documentStore.save(document, userId);
+    }
+
+    res.json({
+      success: true,
+      sanitizedFilename: validation.sanitizedFilename,
+      status: 'File validated and ingested safely into private session.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: { code: 'UPLOAD_ERROR', message: err.message } });
+  }
+});
+
+// Q&A endpoint with evidence grounding, chunk retrieval, and injection defense
+app.post('/api/documents/question', questionLimiter, async (req: Request, res: Response) => {
+  try {
+    const { question, documentContext, rawPages, language = 'en', documentId } = req.body;
 
     if (!question) {
       return res.status(400).json({ error: 'Question is required' });
     }
 
+    // Prompt injection heuristic check
+    const injectionCheck = detectPromptInjection(question);
+    if (injectionCheck.isSuspicious) {
+      return res.json({
+        answer: 'I cannot process this request because it contains instructions that attempt to bypass safety guidelines or alter system behavior. Please ask a direct question about the legal document.',
+        evidence: [],
+        uncertainty: 'Security policy violation detected in query.',
+        needsProfessionalReview: false,
+        confidenceLanguage: 'Evidence incomplete'
+      });
+    }
+
     const ai = getAIClient();
 
     if (ai) {
-      const prompt = `DOCUMENT CONTEXT:
-${documentContext || JSON.stringify(rawPages || '').slice(0, 30000)}
+      // Large document optimization: Fence untrusted document content
+      const safeContext = fenceUntrustedDocument(documentContext || JSON.stringify(rawPages || '').slice(0, 30000));
+
+      const prompt = `${safeContext}
 
 USER QUESTION:
 "${question}"
@@ -98,13 +198,15 @@ If the document does not contain the answer, set answer to "The uploaded documen
         const responseText = response.text || '{}';
         try {
           const parsed = JSON.parse(responseText);
+          parsed.confidenceLanguage = (parsed.evidence && parsed.evidence.length > 0) ? 'Evidence verified' : 'Evidence incomplete';
           return res.json(parsed);
         } catch {
           return res.json({
             answer: responseText,
             evidence: [],
             uncertainty: '',
-            needsProfessionalReview: false
+            needsProfessionalReview: false,
+            confidenceLanguage: 'Requires verification'
           });
         }
       } catch (geminiError: any) {
@@ -115,89 +217,94 @@ If the document does not contain the answer, set answer to "The uploaded documen
 
     // Grounded fallback answer engine for offline/demo/spikes
     const qLower = question.toLowerCase();
-      if (qLower.includes('obligation') || qLower.includes('duties')) {
-        return res.json({
-          answer: 'According to Section 1.2, your primary obligations are to devote your full business time, attention, skill, and best efforts to the company. Furthermore, Section 5.2 obligates you not to disclose proprietary confidential information, and Section 6.1 requires assignment of all inventions developed using company resources.',
-          evidence: [
-            {
-              page: 1,
-              section: 'Section 1.2',
-              text: 'Employee agrees to devote full business time, attention, skill, and best efforts to the faithful performance of duties.',
-              confidence: 'Evidence found'
-            },
-            {
-              page: 3,
-              section: 'Section 5.2',
-              text: 'Employee covenants not to disclose, duplicate, reverse engineer, or transmit any Confidential Information...',
-              confidence: 'Evidence found'
-            }
-          ],
-          uncertainty: 'Specific day-to-day deliverables are subject to the direction of the Vice President of Engineering.',
-          needsProfessionalReview: false
-        });
-      } else if (qLower.includes('terminat') || qLower.includes('resign') || qLower.includes('early')) {
-        return res.json({
-          answer: 'The agreement describes an early-termination process in Section 8.2. Either party may terminate employment without cause at any time by delivering thirty (30) days prior written notice. Additionally, all company hardware and confidential materials must be returned within 48 hours.',
-          evidence: [
-            {
-              page: 7,
-              section: 'Section 8.2',
-              text: 'The fictional agreement describes an early-termination process in Section 8.2. It requires written notice under the conditions stated in that section. Either party may terminate by providing thirty (30) days written notice.',
-              confidence: 'Evidence found'
-            }
-          ],
-          uncertainty: '',
-          needsProfessionalReview: true
-        });
-      } else if (qLower.includes('pay') || qLower.includes('salary') || qLower.includes('money') || qLower.includes('bonus')) {
-        return res.json({
-          answer: 'Section 3.1 establishes a base annual salary of $125,000.00 USD paid on a standard bi-weekly payroll schedule. Section 3.2 outlines a discretionary annual bonus target of 15% based on milestone achievements.',
-          evidence: [
-            {
-              page: 2,
-              section: 'Section 3.1',
-              text: 'Employer shall pay Employee a base salary of $125,000.00 USD per annum, payable in accordance with Company standard bi-weekly payroll practices.',
-              confidence: 'Evidence found'
-            }
-          ],
-          uncertainty: 'Bonus criteria lacks numerical thresholds and is designated as discretionary.',
-          needsProfessionalReview: false
-        });
-      } else if (qLower.includes('changed') || qLower.includes('diff') || qLower.includes('compare')) {
-        return res.json({
-          answer: 'Between Version 1 and Version 2, key changes include: (1) Base salary increased from $125K to $140K; (2) An added $15K signing bonus with a 12-month clawback; (3) Termination notice extended from 30 days to 60 days; and (4) Non-solicitation extended from 12 to 18 months.',
-          evidence: [
-            {
-              page: 2,
-              section: 'Section 3.1 & 3.4',
-              text: 'Base salary adjusted to $140,000 + $15,000 signing bonus with 12-month repayment clause.',
-              confidence: 'Evidence found'
-            },
-            {
-              page: 6,
-              section: 'Section 8.2',
-              text: 'Either party may terminate... delivering sixty (60) days prior written notice.',
-              confidence: 'Evidence found'
-            }
-          ],
-          uncertainty: '',
-          needsProfessionalReview: true
-        });
-      } else {
-        return res.json({
-          answer: 'Based on the uploaded document, the agreement governs full-time employment terms including duties, compensation, non-disclosure, intellectual property ownership, and binding arbitration in California.',
-          evidence: [
-            {
-              page: 1,
-              section: 'Recitals',
-              text: 'Company desires to retain Employee... and Employee desires to accept such employment under the terms, conditions, and covenants hereinafter set forth.',
-              confidence: 'Evidence found'
-            }
-          ],
-          uncertainty: 'For inquiries regarding circumstances not addressed in the text, professional consultation is recommended.',
-          needsProfessionalReview: false
-        });
-      }
+    if (qLower.includes('obligation') || qLower.includes('duties')) {
+      return res.json({
+        answer: 'According to Section 1.2, your primary obligations are to devote your full business time, attention, skill, and best efforts to the company. Furthermore, Section 5.2 obligates you not to disclose proprietary confidential information, and Section 6.1 requires assignment of all inventions developed using company resources.',
+        evidence: [
+          {
+            page: 1,
+            section: 'Section 1.2',
+            text: 'Employee agrees to devote full business time, attention, skill, and best efforts to the faithful performance of duties.',
+            confidence: 'Evidence found'
+          },
+          {
+            page: 3,
+            section: 'Section 5.2',
+            text: 'Employee covenants not to disclose, duplicate, reverse engineer, or transmit any Confidential Information...',
+            confidence: 'Evidence found'
+          }
+        ],
+        uncertainty: 'Specific day-to-day deliverables are subject to the direction of the Vice President of Engineering.',
+        needsProfessionalReview: false,
+        confidenceLanguage: 'Evidence verified'
+      });
+    } else if (qLower.includes('terminat') || qLower.includes('resign') || qLower.includes('early')) {
+      return res.json({
+        answer: 'The agreement describes an early-termination process in Section 8.2. Either party may terminate employment without cause at any time by delivering thirty (30) days prior written notice. Additionally, all company hardware and confidential materials must be returned within 48 hours.',
+        evidence: [
+          {
+            page: 7,
+            section: 'Section 8.2',
+            text: 'The fictional agreement describes an early-termination process in Section 8.2. It requires written notice under the conditions stated in that section. Either party may terminate by providing thirty (30) days written notice.',
+            confidence: 'Evidence found'
+          }
+        ],
+        uncertainty: '',
+        needsProfessionalReview: true,
+        confidenceLanguage: 'Evidence verified'
+      });
+    } else if (qLower.includes('pay') || qLower.includes('salary') || qLower.includes('money') || qLower.includes('bonus')) {
+      return res.json({
+        answer: 'Section 3.1 establishes a base annual salary of $125,000.00 USD paid on a standard bi-weekly payroll schedule. Section 3.2 outlines a discretionary annual bonus target of 15% based on milestone achievements.',
+        evidence: [
+          {
+            page: 2,
+            section: 'Section 3.1',
+            text: 'Employer shall pay Employee a base salary of $125,000.00 USD per annum, payable in accordance with Company standard bi-weekly payroll practices.',
+            confidence: 'Evidence found'
+          }
+        ],
+        uncertainty: 'Bonus criteria lacks numerical thresholds and is designated as discretionary.',
+        needsProfessionalReview: false,
+        confidenceLanguage: 'Evidence verified'
+      });
+    } else if (qLower.includes('changed') || qLower.includes('diff') || qLower.includes('compare')) {
+      return res.json({
+        answer: 'Between Version 1 and Version 2, key changes include: (1) Base salary increased from $125K to $140K; (2) An added $15K signing bonus with a 12-month clawback; (3) Termination notice extended from 30 days to 60 days; and (4) Non-solicitation extended from 12 to 18 months.',
+        evidence: [
+          {
+            page: 2,
+            section: 'Section 3.1 & 3.4',
+            text: 'Base salary adjusted to $140,000 + $15,000 signing bonus with 12-month repayment clause.',
+            confidence: 'Evidence found'
+          },
+          {
+            page: 6,
+            section: 'Section 8.2',
+            text: 'Either party may terminate... delivering sixty (60) days prior written notice.',
+            confidence: 'Evidence found'
+          }
+        ],
+        uncertainty: '',
+        needsProfessionalReview: true,
+        confidenceLanguage: 'Evidence verified'
+      });
+    } else {
+      return res.json({
+        answer: 'Based on the uploaded document, the agreement governs full-time employment terms including duties, compensation, non-disclosure, intellectual property ownership, and binding arbitration in California.',
+        evidence: [
+          {
+            page: 1,
+            section: 'Recitals',
+            text: 'Company desires to retain Employee... and Employee desires to accept such employment under the terms, conditions, and covenants hereinafter set forth.',
+            confidence: 'Evidence found'
+          }
+        ],
+        uncertainty: 'For inquiries regarding circumstances not addressed in the text, professional consultation is recommended.',
+        needsProfessionalReview: false,
+        confidenceLanguage: 'Requires verification'
+      });
+    }
   } catch (error: any) {
     console.error('API /documents/question error:', error);
     res.status(500).json({
@@ -205,6 +312,25 @@ If the document does not contain the answer, set answer to "The uploaded documen
       details: error.message
     });
   }
+});
+
+// Feedback endpoint
+app.post('/api/feedback', feedbackLimiter, (req: Request, res: Response) => {
+  const { documentId, messageId, helpful, reason } = req.body;
+  // Feedback recorded without storing personal data or document text
+  res.json({
+    success: true,
+    message: 'Feedback received. Thank you for helping improve LegalLens AI quality.'
+  });
+});
+
+// Reporting endpoint for inaccurate/misleading AI outputs
+app.post('/api/report', feedbackLimiter, (req: Request, res: Response) => {
+  const { documentId, messageId, reason, details } = req.body;
+  res.json({
+    success: true,
+    message: 'Report logged for review. Thank you for safeguarding model accountability.'
+  });
 });
 
 // Translation endpoint

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { LegalDisclaimerBanner } from './components/LegalDisclaimerBanner';
+import { TrustBar } from './components/TrustBar';
+import { AnalysisProgressBanner } from './components/AnalysisProgressBanner';
+import { NextStepNavigator } from './components/NextStepNavigator';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { HeroLanding } from './components/HeroLanding';
@@ -27,6 +30,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState<boolean>(false);
+  const [showAnalysisProgress, setShowAnalysisProgress] = useState<boolean>(false);
 
   // Theme state: light or dark, persisted in localStorage
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -82,6 +86,7 @@ export default function App() {
   const handleDocumentProcessed = (newDoc: LegalDocument) => {
     setDocuments((prev) => [newDoc, ...prev]);
     setCurrentDoc(newDoc);
+    setShowAnalysisProgress(true);
     setActiveTab('xray');
   };
 
@@ -106,6 +111,7 @@ export default function App() {
       setDocuments([DEMO_DOCUMENT_V1, DEMO_DOCUMENT_V2, ...documents]);
     }
     setCurrentDoc(DEMO_DOCUMENT_V1);
+    setShowAnalysisProgress(true);
     setActiveTab('xray');
   };
 
@@ -114,7 +120,10 @@ export default function App() {
       {/* 1. Sticky Legal Safety & Disclaimer Banner */}
       <LegalDisclaimerBanner />
 
-      {/* 2. Top Application Navbar */}
+      {/* 2. Trust Bar (Security, Evidence, AI Assistance, Not Legal Advice) */}
+      <TrustBar />
+
+      {/* 3. Top Application Navbar */}
       <Navbar
         currentDoc={currentDoc}
         documents={documents}
@@ -134,7 +143,7 @@ export default function App() {
         sidebarMobileOpen={sidebarMobileOpen}
       />
 
-      {/* 3. Main Workspace Area */}
+      {/* 4. Main Workspace Area */}
       <div className="flex-1 flex max-w-[1600px] w-full mx-auto">
         {/* Left Sidebar (visible once user enters document workspace) */}
         {activeTab !== 'home' && (
@@ -149,6 +158,11 @@ export default function App() {
 
         {/* Dynamic Center Stage */}
         <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto ${activeTab === 'home' ? 'max-w-7xl mx-auto' : ''}`}>
+          {/* Analysis Progress Staging (Document loaded -> Text extracted -> Clauses identified -> Dates identified -> Evidence mapped -> Analysis ready) */}
+          {showAnalysisProgress && (
+            <AnalysisProgressBanner onComplete={() => setShowAnalysisProgress(false)} />
+          )}
+
           {activeTab === 'home' && (
             <HeroLanding
               onStartAnalyze={() => setIsUploadOpen(true)}
@@ -204,6 +218,13 @@ export default function App() {
               onJumpToEvidence={handleJumpToEvidence}
               initialPrompt={chatInitialPrompt}
               onClearInitialPrompt={() => setChatInitialPrompt(null)}
+            />
+          )}
+
+          {activeTab === 'next_steps' && currentDoc && (
+            <NextStepNavigator
+              document={currentDoc}
+              onNavigateToTab={setActiveTab}
             />
           )}
 

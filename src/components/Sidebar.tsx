@@ -12,7 +12,8 @@ import {
   Briefcase,
   LockKeyhole,
   Settings,
-  BookOpen
+  BookOpen,
+  Compass
 } from 'lucide-react';
 
 export type NavTab = 
@@ -22,6 +23,7 @@ export type NavTab =
   | 'radar'
   | 'decision_map'
   | 'chat'
+  | 'next_steps'
   | 'compare'
   | 'timeline'
   | 'action_plan'
@@ -52,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'radar' as NavTab, label: 'Clause Radar', icon: Radar, badge: undefined },
     { id: 'decision_map' as NavTab, label: 'Decision Map', icon: Network, badge: undefined },
     { id: 'chat' as NavTab, label: 'Ask LegalLens', icon: MessageSquareText, badge: 'AI' },
+    { id: 'next_steps' as NavTab, label: 'Next-Step Navigator', icon: Compass, badge: 'Guide' },
     { id: 'viewer' as NavTab, label: 'Document Reader', icon: BookOpen, badge: undefined },
     { id: 'compare' as NavTab, label: 'Deep Compare', icon: GitCompare, badge: 'v1 vs v2' },
     { id: 'timeline' as NavTab, label: 'Timeline', icon: CalendarClock, badge: undefined },
