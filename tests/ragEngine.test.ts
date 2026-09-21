@@ -6,11 +6,36 @@ describe('RAG Engine & Evidence Grounding', () => {
   const sampleDoc: LegalDocument = {
     id: 'doc-rag-1',
     title: 'Software Development Agreement',
-    documentType: 'Development Agreement',
-    riskScore: 50,
-    summary: 'Dev agreement summary',
-    effectiveDate: '2026-01-01',
-    parties: ['Client', 'Developer'],
+    filename: 'dev_agreement.pdf',
+    fileSize: '240 KB',
+    documentType: 'Freelance / Service Contract',
+    uploadedAt: '2026-01-01',
+    pageCount: 2,
+    sectionsCount: 4,
+    clausesCount: 1,
+    obligationsCount: 1,
+    datesCount: 1,
+    paymentsCount: 0,
+    questionsCount: 1,
+    overview: {
+      title: 'Software Development Agreement',
+      documentType: 'Freelance / Service Contract',
+      parties: ['Client', 'Developer'],
+      effectiveDate: '2026-01-01',
+      expirationDate: '2027-01-01',
+      governingLaw: 'Delaware',
+      documentLanguage: 'English'
+    },
+    executiveSummary: {
+      whatIsThis: 'Software agreement',
+      parties: 'Client and Developer',
+      purpose: 'Development',
+      obligations: 'Deliver milestone',
+      financialTerms: 'Standard',
+      importantDates: '30 days',
+      termination: '15 days notice',
+      reviewCarefully: 'Termination'
+    },
     clauses: [
       {
         id: 'c-1',
@@ -25,6 +50,8 @@ describe('RAG Engine & Evidence Grounding', () => {
       }
     ],
     timeline: [],
+    attentionItems: [],
+    decisionNodes: [],
     rawPages: [
       {
         pageNumber: 1,

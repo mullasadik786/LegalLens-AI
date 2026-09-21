@@ -13,10 +13,12 @@ import {
   LockKeyhole,
   Settings,
   BookOpen,
-  Compass
+  Compass,
+  Package
 } from 'lucide-react';
 
 export type NavTab = 
+  | 'ecommerce_agent'
   | 'home'
   | 'xray'
   | 'clauses'
@@ -48,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   hasDocument,
 }) => {
   const navItems = [
+    { id: 'ecommerce_agent' as NavTab, label: 'E-Commerce Agent', icon: Package, badge: 'TrueForge' },
     { id: 'home' as NavTab, label: 'Overview / Hero', icon: LayoutDashboard, badge: undefined },
     { id: 'xray' as NavTab, label: 'Document X-Ray', icon: Cpu, badge: hasDocument ? 'Active' : undefined },
     { id: 'clauses' as NavTab, label: 'Clause Explorer', icon: FileSearch, badge: undefined },

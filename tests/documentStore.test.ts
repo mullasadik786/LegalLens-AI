@@ -6,13 +6,40 @@ describe('Document Store & IDOR Protection', () => {
   const createMockDoc = (id: string, title: string): LegalDocument => ({
     id,
     title,
+    filename: `${title.toLowerCase().replace(/\s+/g, '_')}.pdf`,
+    fileSize: '128 KB',
     documentType: 'Employment Agreement',
-    riskScore: 65,
-    summary: 'Mock summary',
-    effectiveDate: '2026-10-01',
-    parties: ['Party A', 'Party B'],
+    uploadedAt: '2026-10-01',
+    pageCount: 1,
+    sectionsCount: 1,
+    clausesCount: 0,
+    obligationsCount: 0,
+    datesCount: 0,
+    paymentsCount: 0,
+    questionsCount: 0,
+    overview: {
+      title,
+      documentType: 'Employment Agreement',
+      parties: ['Party A', 'Party B'],
+      effectiveDate: '2026-10-01',
+      expirationDate: '2027-10-01',
+      governingLaw: 'California',
+      documentLanguage: 'English'
+    },
+    executiveSummary: {
+      whatIsThis: 'Mock contract',
+      parties: 'Party A and Party B',
+      purpose: 'Mock purpose',
+      obligations: 'Standard obligations',
+      financialTerms: 'Standard terms',
+      importantDates: 'None',
+      termination: 'Standard',
+      reviewCarefully: 'Standard'
+    },
     clauses: [],
     timeline: [],
+    attentionItems: [],
+    decisionNodes: [],
     rawPages: [{ pageNumber: 1, content: 'Terms and conditions apply.' }]
   });
 

@@ -19,6 +19,7 @@ import { DocumentViewer } from './components/DocumentViewer';
 import { LegalVault } from './components/LegalVault';
 import { DocumentUploadModal } from './components/DocumentUploadModal';
 import { ExportCenterModal } from './components/ExportCenterModal';
+import { EcommerceSupportHub } from './components/ecommerce/EcommerceSupportHub';
 import { Sun, Moon } from 'lucide-react';
 
 import { LegalDocument, SupportedLanguage, LegalClause } from './types/legal';
@@ -27,7 +28,7 @@ import { DEMO_DOCUMENT_V1, DEMO_DOCUMENT_V2, DEMO_COMPARISONS } from './data/dem
 export default function App() {
   const [documents, setDocuments] = useState<LegalDocument[]>([DEMO_DOCUMENT_V1, DEMO_DOCUMENT_V2]);
   const [currentDoc, setCurrentDoc] = useState<LegalDocument>(DEMO_DOCUMENT_V1);
-  const [activeTab, setActiveTab] = useState<NavTab>('home');
+  const [activeTab, setActiveTab] = useState<NavTab>('ecommerce_agent');
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState<boolean>(false);
   const [showAnalysisProgress, setShowAnalysisProgress] = useState<boolean>(false);
@@ -157,7 +158,11 @@ export default function App() {
         )}
 
         {/* Dynamic Center Stage */}
-        <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto ${activeTab === 'home' ? 'max-w-7xl mx-auto' : ''}`}>
+        <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto ${activeTab === 'home' || activeTab === 'ecommerce_agent' ? 'max-w-7xl mx-auto' : ''}`}>
+          {activeTab === 'ecommerce_agent' && (
+            <EcommerceSupportHub />
+          )}
+
           {/* Analysis Progress Staging (Document loaded -> Text extracted -> Clauses identified -> Dates identified -> Evidence mapped -> Analysis ready) */}
           {showAnalysisProgress && (
             <AnalysisProgressBanner onComplete={() => setShowAnalysisProgress(false)} />
@@ -224,7 +229,7 @@ export default function App() {
           {activeTab === 'next_steps' && currentDoc && (
             <NextStepNavigator
               document={currentDoc}
-              onNavigateToTab={setActiveTab}
+              onNavigateToTab={(tab: any) => setActiveTab(tab as NavTab)}
             />
           )}
 

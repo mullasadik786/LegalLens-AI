@@ -12,8 +12,15 @@ import {
 import { documentStore } from './server/documentStore';
 import { chunkDocument, retrieveRelevantChunks, validateEvidenceAgainstDocument } from './server/ragEngine';
 import { DEMO_DOCUMENT_V1, DEMO_DOCUMENT_V2 } from './src/data/demoDocuments';
+import { TrueForgeAgentHarness } from './server/harness/agentHarness';
+import { ORDERS_DATABASE, queryDatabaseTool } from './server/tools/orderDatabase';
+import { checkShippingCarrierApiTool } from './server/tools/carrierService';
+import { initiateStripeRefundTool } from './server/tools/stripeService';
 
 dotenv.config();
+
+// Global active instance of the TrueForge Agent Harness
+const agentHarness = new TrueForgeAgentHarness();
 
 // Seed public demo documents into secure store
 documentStore.save(DEMO_DOCUMENT_V1, 'public_demo');
@@ -66,13 +73,119 @@ app.get('/api/health', (req: Request, res: Response) => {
     status: 'ok',
     aiConfigured: Boolean(process.env.GEMINI_API_KEY),
     model: 'gemini-3.8-flash',
-    platform: 'LegalLens AI GenAI Workspace',
+    platform: 'TrueForge Smart E-Commerce Support & Refund Agent Harness',
     security: {
       rateLimiting: true,
       securityHeaders: true,
       promptInjectionShield: true,
-      idorProtection: true
+      idorProtection: true,
+      financialSafeguard: 'TrueForge Pause State Active'
     }
+  });
+});
+
+// ==========================================
+// TRUEFORGE AGENT HARNESS & OPERATIONAL TOOLS
+// ==========================================
+
+// 1. Process customer message through Core Workflow Loop
+app.post('/api/agent/chat', async (req: Request, res: Response) => {
+  try {
+    const { message, order_id, customer_email } = req.body;
+    if (!message && !order_id) {
+      return res.status(400).json({ success: false, error: 'Message or order_id is required' });
+    }
+
+    // Defense: Detect adversarial prompt injection attempting to bypass pause or force refunds
+    const injectionCheck = detectPromptInjection(message || '');
+    if (injectionCheck.isSuspicious) {
+      return res.json({
+        success: true,
+        agentReply: "I apologize, but I am an automated e-commerce support agent. I can only assist with locating your order and reviewing verified shipping carrier updates. Please provide your order ID.",
+        state: agentHarness.getState(),
+        newTools: []
+      });
+    }
+
+    const response = await agentHarness.processCustomerMessage(
+      message || '',
+      order_id,
+      customer_email
+    );
+
+    res.json({
+      success: true,
+      agentReply: response.agentReply,
+      state: response.state,
+      newTools: response.newTools
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Query current Harness State
+app.get('/api/agent/state', (req: Request, res: Response) => {
+  res.json({ success: true, state: agentHarness.getState() });
+});
+
+// 3. Reset Harness Session
+app.post('/api/agent/reset', (req: Request, res: Response) => {
+  agentHarness.resetSession();
+  res.json({ success: true, message: 'TrueForge Agent Harness session reset to IDLE' });
+});
+
+// 4. Human Administrator Decision on Pending Refund (Step 4: Post-Approval Execution)
+app.post('/api/harness/approve', async (req: Request, res: Response) => {
+  try {
+    const { decision, adminName, adminNote } = req.body;
+    if (decision !== 'APPROVE' && decision !== 'REJECT') {
+      return res.status(400).json({ success: false, error: 'decision must be APPROVE or REJECT' });
+    }
+
+    const result = await agentHarness.resolveHumanApproval(
+      decision,
+      adminName || 'Senior Administrator',
+      adminNote
+    );
+
+    res.json({
+      success: true,
+      agentReply: result.agentReply,
+      state: result.state,
+      settledReceipt: result.settledReceipt
+    });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Tool 1: query_database direct inspection endpoint
+app.post('/api/tools/query_database', async (req: Request, res: Response) => {
+  const { order_id, customer_email } = req.body;
+  const result = await queryDatabaseTool({ order_id, customer_email });
+  res.json(result);
+});
+
+// 6. Tool 2: check_shipping_carrier_api direct inspection endpoint
+app.post('/api/tools/check_shipping_carrier_api', async (req: Request, res: Response) => {
+  const { tracking_number } = req.body;
+  const result = await checkShippingCarrierApiTool({ tracking_number });
+  res.json(result);
+});
+
+// 7. Tool 3: initiate_stripe_refund direct inspection endpoint
+app.post('/api/tools/initiate_stripe_refund', async (req: Request, res: Response) => {
+  const { order_id, amount, currency, reason } = req.body;
+  const result = await initiateStripeRefundTool({ order_id, amount, currency, reason });
+  res.json(result);
+});
+
+// 8. Order database inspection endpoint for demo and test evaluation
+app.get('/api/database/orders', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    orders: Object.values(ORDERS_DATABASE)
   });
 });
 
